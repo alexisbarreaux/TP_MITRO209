@@ -1,3 +1,50 @@
+import os.path as path
+import sys
+import re
+
+# Dataset notes :
+# ego-Facebook : n = 4039, m = 88234, "ego-Facebook.txt"
+# ca-HepTh : n = 9877, m = 25998, "CA-HepTh.txt"
+
+if "win" in sys.platform:
+    DATA_PATH = ".\\data"
+else:
+    DATA_PATH = "./data"
+
+
+def filling_adjacency(filename, adj_lists=None, deg=None, number_of_edges=0):
+    """
+    Method to fill the adjacency with the file containing edges.
+    :param filename: Given filename as a string.
+    :param adj_lists: Adjacency list.
+    :param deg
+    :param number_of_edges
+    :return: The number of edges if it went well, -1 otherwise.
+    """
+    if deg is None:
+        deg = []
+    if adj_lists is None:
+        adj_lists = []
+
+    file_path = path.join(DATA_PATH, filename)
+    if path.exists(file_path) and path.isfile(file_path):
+        with open(file_path, 'r') as file:
+            edges = file.readline().strip().split(" ")
+
+            # TODO don't use a cast here or check
+            u, v = int(edges[0]), int(edges[1])
+            adj_lists[u].append(v)
+            adj_lists[v].append(u)
+            deg[u] += 1
+            deg[v] += 1
+            number_of_edges += 1
+            return number_of_edges
+
+    else:
+        print("Invalid specified path : " + file_path)
+        return -1
+
+
 # O(n+m)
 def densest_linear_test(n, file):
     """
@@ -94,3 +141,4 @@ def densest_linear_test(n, file):
 
     # O(n)
     return [i for i in range(n) if chosen_nodes[i]]
+
