@@ -7,7 +7,7 @@ import sys
 # gemsec_artists : n = 50515, m= 819306, "gemsec_artists.txt"
 # gemsec_government : n = 7057, m = 89455, "gemsec_government.txt"
 # H = densest_linear_test(7057, "gemsec_government.txt")
-# to-graph : n = 5, edges = 
+# toy_graph : n = 5, edges = 6, "toy_graph.txt
 
 if "win" in sys.platform:
     DATA_PATH = ".\\data"
@@ -83,7 +83,7 @@ def densest_linear_test(n, filename):
 
     # O(m)
     number_of_edges = filling_adjacency(filename, adj_lists, deg, number_of_edges)
-    print("n edges : ", number_of_edges)
+
     if number_of_edges < 0:
         # TODO raise smth here
         return []
@@ -91,7 +91,6 @@ def densest_linear_test(n, filename):
     # O(1)
     # Setting initial ro_h
     ro_h = number_of_edges / n
-    print(ro_h)
 
     # O(n)
     # Setting initial degrees state.
@@ -99,10 +98,10 @@ def densest_linear_test(n, filename):
     for i in range(n):
         deg_list[deg[i]].append(i)
         min_deg = min(min_deg, deg[i])
-    print(min_deg)
-    print("deg", deg_list[min_deg])
+
     # O(m) pour moi
     # We erase at most n - 1 nodes.
+    # TODO même n - 2, après il ne reste qu'un seul arc au mieux.
     while compteur < n - 1:
         found = False
         node = -1
@@ -131,6 +130,7 @@ def densest_linear_test(n, filename):
             return []
 
         # Found a node to compute :
+        node_used[node] = True
         compteur += 1
         removed_nodes.append(node)
 
@@ -148,20 +148,19 @@ def densest_linear_test(n, filename):
         # Maj possible de ro_h
         # O(1)
         number_of_edges -= erased_edges
-        print(number_of_edges)
         a = number_of_edges / (n - compteur)
         if a > ro_h:
             ro_h = a
             optimal_state = compteur
+            optimal_edges = number_of_edges
 
     # Need to compute H
     # O(n)
-
     chosen_nodes = [True for _ in range(n)]
     for i in range(optimal_state):
         chosen_nodes[removed_nodes[i]] = False
 
     # O(n)
-    print(ro_h, optimal_state)
-    return [i for i in range(n) if chosen_nodes[i]]
+    print(optimal_edges)
+    return [i for i in range(n) if chosen_nodes[i]], ro_h
 
