@@ -1,10 +1,13 @@
 import os.path as path
 import sys
-import re
 
 # Dataset notes :
 # ego-Facebook : n = 4039, m = 88234, "ego-Facebook.txt"
-# ca-HepTh : n = 9877, m = 25998, "CA-HepTh.txt"
+# H = densest_linear_test(4039, "ego-Facebook.txt")
+# gemsec_artists : n = 50515, m= 819306, "gemsec_artists.txt"
+# gemsec_government : n = 7057, m = 89455, "gemsec_government.txt"
+# H = densest_linear_test(7057, "gemsec_government.txt")
+# to-graph : n = 5, edges = 
 
 if "win" in sys.platform:
     DATA_PATH = ".\\data"
@@ -12,6 +15,7 @@ else:
     DATA_PATH = "./data"
 
 
+# O(m)
 def filling_adjacency(filename, adj_lists=None, deg=None, number_of_edges=0):
     """
     Method to fill the adjacency with the file containing edges.
@@ -21,23 +25,36 @@ def filling_adjacency(filename, adj_lists=None, deg=None, number_of_edges=0):
     :param number_of_edges
     :return: The number of edges if it went well, -1 otherwise.
     """
+    # O(1)
     if deg is None:
         deg = []
     if adj_lists is None:
         adj_lists = []
 
+    # O(1), more accurate to say something that will be tiny in front of n or m.
     file_path = path.join(DATA_PATH, filename)
+
+    # O(m)
     if path.exists(file_path) and path.isfile(file_path):
         with open(file_path, 'r') as file:
-            edges = file.readline().strip().split(" ")
+            line = file.readline()
 
-            # TODO don't use a cast here or check
-            u, v = int(edges[0]), int(edges[1])
-            adj_lists[u].append(v)
-            adj_lists[v].append(u)
-            deg[u] += 1
-            deg[v] += 1
-            number_of_edges += 1
+            # O(m)
+            while not len(line) == 0:
+                # All this in O(1)
+                line = line.replace("  ", " ")
+                edges = line.strip().split(" ")
+
+                # TODO don't use a cast here or check
+                u, v = int(edges[0]), int(edges[1])
+                adj_lists[u].append(v)
+                adj_lists[v].append(u)
+                deg[u] += 1
+                deg[v] += 1
+                number_of_edges += 1
+
+                line = file.readline()
+
             return number_of_edges
 
     else:
@@ -46,11 +63,11 @@ def filling_adjacency(filename, adj_lists=None, deg=None, number_of_edges=0):
 
 
 # O(n+m)
-def densest_linear_test(n, file):
+def densest_linear_test(n, filename):
     """
     Computes the densest subgraph.
     :param n: the number of nodes.
-    :param file: A list of list of edges.
+    :param filename: A list of list of edges.
     :return: the densest subgraph.
     """
 
@@ -65,16 +82,16 @@ def densest_linear_test(n, file):
     optimal_state = 0
 
     # O(m)
-    for [u, v] in file:
-        adj_lists[u].append(v)
-        adj_lists[v].append(u)
-        deg[u] += 1
-        deg[v] += 1
-        number_of_edges += 1
+    number_of_edges = filling_adjacency(filename, adj_lists, deg, number_of_edges)
+    print("n edges : ", number_of_edges)
+    if number_of_edges < 0:
+        # TODO raise smth here
+        return []
 
     # O(1)
     # Setting initial ro_h
     ro_h = number_of_edges / n
+    print(ro_h)
 
     # O(n)
     # Setting initial degrees state.
@@ -82,7 +99,8 @@ def densest_linear_test(n, file):
     for i in range(n):
         deg_list[deg[i]].append(i)
         min_deg = min(min_deg, deg[i])
-
+    print(min_deg)
+    print("deg", deg_list[min_deg])
     # O(m) pour moi
     # We erase at most n - 1 nodes.
     while compteur < n - 1:
@@ -104,6 +122,7 @@ def densest_linear_test(n, file):
                 # before having this issue
                 if min_deg == n - 1:
                     found = True
+                # Otherwise just go further in the chain.
                 else:
                     min_deg += 1
 
@@ -116,6 +135,7 @@ def densest_linear_test(n, file):
         removed_nodes.append(node)
 
         # O(deg(node))
+        # TODO j'ai l'impression qu'il y a un souci avec le nombre d'arcs et leur maj
         erased_edges = 0
         for neighbour in adj_lists[node]:
             if not node_used[neighbour]:
@@ -128,6 +148,7 @@ def densest_linear_test(n, file):
         # Maj possible de ro_h
         # O(1)
         number_of_edges -= erased_edges
+        print(number_of_edges)
         a = number_of_edges / (n - compteur)
         if a > ro_h:
             ro_h = a
@@ -135,10 +156,12 @@ def densest_linear_test(n, file):
 
     # Need to compute H
     # O(n)
+
     chosen_nodes = [True for _ in range(n)]
     for i in range(optimal_state):
         chosen_nodes[removed_nodes[i]] = False
 
     # O(n)
+    print(ro_h, optimal_state)
     return [i for i in range(n) if chosen_nodes[i]]
 
