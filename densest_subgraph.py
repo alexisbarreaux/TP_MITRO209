@@ -1,5 +1,7 @@
 import os.path as path
 import sys
+import cProfile
+from time import time
 
 # Dataset notes :
 # ego-Facebook : n = 4039, m = 88234, "ego-Facebook.txt"
@@ -7,7 +9,8 @@ import sys
 # gemsec_artists : n = 50515, m= 819306, "gemsec_artists.txt"
 # gemsec_government : n = 7057, m = 89455, "gemsec_government.txt"
 # H = densest_linear_test(7057, "gemsec_government.txt")
-# toy_graph : n = 5, edges = 6, "toy_graph.txt
+# toy_graph : n = 5, edges = 6, "toy_graph.txt"
+# toy_graph : n = 10, "toy_graph_2.txt"
 
 if "win" in sys.platform:
     DATA_PATH = ".\\data"
@@ -83,7 +86,6 @@ def densest_linear_test(n, filename):
 
     # O(m)
     number_of_edges = filling_adjacency(filename, adj_lists, deg, number_of_edges)
-
     if number_of_edges < 0:
         # TODO raise smth here
         return []
@@ -128,7 +130,8 @@ def densest_linear_test(n, filename):
         # Shouldn't happen yet better safe than sorry.
         if node == - 1:
             return []
-
+        if compteur == 0 :
+            print(min_deg, node, adj_lists[node])
         # Found a node to compute :
         node_used[node] = True
         compteur += 1
@@ -162,5 +165,14 @@ def densest_linear_test(n, filename):
 
     # O(n)
     print(optimal_edges)
-    return [i for i in range(n) if chosen_nodes[i]], ro_h
+    return [i for i in range(n) if chosen_nodes[i]], ro_h, adj_lists
 
+
+def test_temps(filename):
+    a = time()
+    densest_linear_test(4039, filename)
+    return time() - a
+
+
+def test_temps_2():
+    cProfile.run("densest_linear_test(4039, 'ego-Facebook.txt')")
