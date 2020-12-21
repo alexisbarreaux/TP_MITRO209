@@ -27,7 +27,7 @@ else:
 
 
 # O(m)
-def filling_adjacency(filename, adj_lists=None, deg=None, number_of_edges=0):
+def filling_adjacency(filename, list adj_lists, list deg, int number_of_edges):
     """
     Method to fill the adjacency with the file containing edges.
     :param filename: Given filename as a string.
@@ -36,11 +36,9 @@ def filling_adjacency(filename, adj_lists=None, deg=None, number_of_edges=0):
     :param number_of_edges
     :return: The number of edges if it went well, -1 otherwise.
     """
-    # O(1)
-    if deg is None:
-        deg = []
-    if adj_lists is None:
-        adj_lists = []
+    cdef str file_path, line
+    cdef int u, v
+    cdef list edges
 
     # O(1), more accurate to say something that will be tiny in front of n or m.
     file_path = path.join(DATA_PATH, filename)
@@ -78,29 +76,34 @@ def filling_adjacency(filename, adj_lists=None, deg=None, number_of_edges=0):
 
 
 # O(n+m)
-def densest_linear_test(n, filename):
+def densest_linear_test(int n,str filename):
     """
     Computes the densest subgraph.
     :param n: the number of nodes.
     :param filename: A list of list of edges.
     :return: the densest subgraph.
     """
+    if n <= 0 :
+        return [], -1, -1
 
     # O(n)
-    adj_lists = [[] for _ in range(n)]
-    deg = [0 for _ in range(n)]
-    deg_list = [[] for _ in range(n)]
-    node_used = [False for _ in range(n)]
-    compteur = 0
-    number_of_edges = 0
-    removed_nodes = []
-    optimal_state = 0
+    cdef list adj_lists = [[] for _ in range(n)]
+    cdef list deg = [0 for _ in range(n)]
+    cdef list deg_list = [[] for _ in range(n)]
+    cdef list node_used = [False for _ in range(n)]
+    cdef list removed_nodes = []
+    cdef list chosen_nodes = [True for _ in range(n)]
+    cdef int compteur = 0
+    cdef int number_of_edges = 0
+    cdef int optimal_state = 0
+
+    cdef int roh_h, min_deg, temp_deg, node, erased_edges, neighbour, temp_roh
 
     # O(m)
     number_of_edges = filling_adjacency(filename, adj_lists, deg, number_of_edges)
     if number_of_edges < 0:
         # TODO raise smth here
-        return []
+        return [], -1, -1
 
     # O(1)
     # Setting initial rho_h
@@ -110,8 +113,9 @@ def densest_linear_test(n, filename):
     # Setting initial degrees state.
     min_deg = n - 1
     for i in range(n):
-        deg_list[deg[i]].append(i)
-        min_deg = min(min_deg, deg[i])
+        temp_deg = deg[i]
+        deg_list[temp_deg].append(i)
+        min_deg = min(min_deg, temp_deg)
 
     # O(m) pour moi
     # We erase at most n - 1 nodes.
@@ -162,21 +166,20 @@ def densest_linear_test(n, filename):
         # Maj possible de rho_h
         # O(1)
         number_of_edges -= erased_edges
-        a = number_of_edges / (n - compteur)
-        if a > rho_h:
-            rho_h = a
+        temp_roh = number_of_edges / (n - compteur)
+        if temp_roh > rho_h:
+            rho_h = temp_roh
             optimal_state = compteur
             optimal_edges = number_of_edges
 
     # Need to compute H
     # O(n)
-    chosen_nodes = [True for _ in range(n)]
+
     for i in range(optimal_state):
         chosen_nodes[removed_nodes[i]] = False
 
     # O(n)
-    print(optimal_edges)
-    return [i for i in range(n) if chosen_nodes[i]], rho_h, adj_lists
+    return [i for i in range(n) if chosen_nodes[i]], rho_h, optimal_edges
 
 
 def test_temps(n, filename):

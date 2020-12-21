@@ -5,3 +5,4 @@ data
 *.pyd
 *.c
 build
+*.html

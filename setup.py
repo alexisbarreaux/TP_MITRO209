@@ -1,6 +1,9 @@
 from setuptools import setup
 from Cython.Build import cythonize
 
+import Cython.Compiler.Options
+Cython.Compiler.Options.annotate = True
+
 # python setup.py build_ext --inplace
 
 setup(
