@@ -1,0 +1,7 @@
+venv
+.idea
+data
+*.pyc
+*.pyd
+*.c
+build

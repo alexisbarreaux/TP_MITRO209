@@ -1,7 +1,7 @@
 import os.path as path
 import sys
 import cProfile
-import Cython
+
 from time import time
 
 # Dataset notes :
