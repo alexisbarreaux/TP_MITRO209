@@ -1,0 +1,2 @@
+setuptools~=51.1.0.post20201221
+Cython~=0.29.21
