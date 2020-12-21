@@ -6,9 +6,16 @@ from time import time
 # Dataset notes :
 # ego-Facebook : n = 4039, m = 88234, "ego-Facebook.txt"
 # H = densest_linear_test(4039, "ego-Facebook.txt")
-# gemsec_artists : n = 50515, m= 819306, "gemsec_artists.txt"
 # gemsec_government : n = 7057, m = 89455, "gemsec_government.txt"
 # H = densest_linear_test(7057, "gemsec_government.txt")
+# gemsec_athletes : n = 13866, m = 86858
+# H = densest_linear_test(13866, "gemsec_athletes.txt")
+# gemsec_artists : n = 50515, m = 819306
+# H = densest_linear_test(50515, "gemsec_artists.txt")
+# gemsec_new_sites : n = 27917, m = 206259
+# H = densest_linear_test(27917, "gemsec_new_sites.txt")
+# com_amazon : n = 334863, m = 925,872
+# TODO pour celui là améliorer la construction pour les trucs chiants.
 # toy_graph : n = 5, edges = 6, "toy_graph.txt"
 # toy_graph : n = 10, "toy_graph_2.txt"
 
@@ -50,13 +57,17 @@ def filling_adjacency(filename, adj_lists=None, deg=None, number_of_edges=0):
 
                 # TODO don't use a cast here or check
                 u, v = int(edges[0]), int(edges[1])
+
+                line = file.readline()
+
+                if u == v:
+                    continue
+
                 adj_lists[u].append(v)
                 adj_lists[v].append(u)
                 deg[u] += 1
                 deg[v] += 1
                 number_of_edges += 1
-
-                line = file.readline()
 
             return number_of_edges
 
@@ -91,8 +102,8 @@ def densest_linear_test(n, filename):
         return []
 
     # O(1)
-    # Setting initial ro_h
-    ro_h = number_of_edges / n
+    # Setting initial rho_h
+    rho_h = number_of_edges / n
 
     # O(n)
     # Setting initial degrees state.
@@ -130,8 +141,7 @@ def densest_linear_test(n, filename):
         # Shouldn't happen yet better safe than sorry.
         if node == - 1:
             return []
-        if compteur == 0 :
-            print(min_deg, node, adj_lists[node])
+
         # Found a node to compute :
         node_used[node] = True
         compteur += 1
@@ -148,12 +158,12 @@ def densest_linear_test(n, filename):
                 min_deg = min(min_deg, deg[neighbour])
                 deg_list[deg[neighbour]].append(neighbour)
 
-        # Maj possible de ro_h
+        # Maj possible de rho_h
         # O(1)
         number_of_edges -= erased_edges
         a = number_of_edges / (n - compteur)
-        if a > ro_h:
-            ro_h = a
+        if a > rho_h:
+            rho_h = a
             optimal_state = compteur
             optimal_edges = number_of_edges
 
@@ -165,12 +175,13 @@ def densest_linear_test(n, filename):
 
     # O(n)
     print(optimal_edges)
-    return [i for i in range(n) if chosen_nodes[i]], ro_h, adj_lists
+    return [i for i in range(n) if chosen_nodes[i]], rho_h, adj_lists
 
 
-def test_temps(filename):
+def test_temps(n, filename):
     a = time()
-    densest_linear_test(4039, filename)
+    _, ro, _ = densest_linear_test(n, filename)
+    print(ro)
     return time() - a
 
 
