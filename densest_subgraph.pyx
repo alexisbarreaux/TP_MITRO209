@@ -1,8 +1,15 @@
+# cython: language_level=3
+# cython: linetrace=True
+
 import os.path as path
+import numpy as np
+import matplotlib.pyplot as plt
 import sys
 import cProfile
 
 from time import time
+
+cimport cython
 
 # Dataset notes :
 # ego-Facebook : n = 4039, m = 88234, "ego-Facebook.txt"
@@ -27,6 +34,8 @@ else:
 
 
 # O(m)
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def filling_adjacency(filename, list adj_lists, list deg, int number_of_edges):
     """
     Method to fill the adjacency with the file containing edges.
@@ -76,6 +85,8 @@ def filling_adjacency(filename, list adj_lists, list deg, int number_of_edges):
 
 
 # O(n+m)
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def densest_linear_test(int n,str filename):
     """
     Computes the densest subgraph.
@@ -87,17 +98,18 @@ def densest_linear_test(int n,str filename):
         return [], -1, -1
 
     # O(n)
-    cdef list adj_lists = [[] for _ in range(n)]
     cdef list deg = [0 for _ in range(n)]
-    cdef list deg_list = [[] for _ in range(n)]
     cdef list node_used = [False for _ in range(n)]
+    cdef list adj_lists = [[] for _ in range(n)]
+    cdef list deg_list = [[] for _ in range(n)]
     cdef list removed_nodes = []
     cdef list chosen_nodes = [True for _ in range(n)]
     cdef int compteur = 0
     cdef int number_of_edges = 0
     cdef int optimal_state = 0
 
-    cdef int roh_h, min_deg, temp_deg, node, erased_edges, neighbour, temp_roh
+    cdef int roh_h, min_deg, temp_deg, node, erased_edges, neighbour
+    cdef double temp_roh
 
     # O(m)
     number_of_edges = filling_adjacency(filename, adj_lists, deg, number_of_edges)
@@ -191,3 +203,24 @@ def test_temps(n, filename):
 
 def test_temps_2():
     cProfile.run("densest_linear_test(4039, 'ego-Facebook.txt')")
+
+def ploting_times():
+    n = np.array([4039, 7057, 13866, 27917, 50515, 334863])
+    labels = np.array(["ego-Facebook", "gemsec_government", "gemsec_athletes", "gemsec_new_sites", "gemsec_artists",
+                       "com_amazon"])
+
+    times = np.zeros(len(n))
+    start_time = time()
+
+    for i in range(len(n)):
+        _, _, _ = densest_linear_test(n[i], labels[i] + ".txt")
+        times[i] = time()
+
+    for i in range(len(times) - 1, 0, -1):
+        times[i] -= times[i - 1]
+    times[0] -= start_time
+
+    # Ploting the figure
+    plt.clf()
+    plt.plot(n, times)
+    plt.show()
