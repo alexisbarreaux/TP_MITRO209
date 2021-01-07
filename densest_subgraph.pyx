@@ -26,6 +26,7 @@ cimport cython
 # TODO pour celui là améliorer la construction pour les trucs chiants.
 # toy_graph : n = 5, edges = 6, "toy_graph.txt"
 # toy_graph : n = 10, "toy_graph_2.txt"
+# roadNet-PA : n = 1088092 (but in fact more 1090950), 4,913s
 
 if "win" in sys.platform:
     DATA_PATH = ".\\data"
@@ -204,10 +205,10 @@ def test_temps(n, filename):
 def test_temps_2():
     cProfile.run("densest_linear_test(4039, 'ego-Facebook.txt')")
 
-def ploting_times():
-    n = np.array([4039, 7057, 13866, 27917, 50515, 334863])
+def test_temps_3():
+    n = np.array([4039, 7057, 13866, 27917, 50515, 1090950])
     labels = np.array(["ego-Facebook", "gemsec_government", "gemsec_athletes", "gemsec_new_sites", "gemsec_artists",
-                       "com_amazon"])
+                       "roadNet-PA"])
 
     times = np.zeros(len(n))
     start_time = time()
@@ -219,8 +220,12 @@ def ploting_times():
     for i in range(len(times) - 1, 0, -1):
         times[i] -= times[i - 1]
     times[0] -= start_time
+    return n, times
 
-    # Ploting the figure
+def plotting_times():
+    n, times = test_temps_3()
+
+    # Plotting the figure
     plt.clf()
     plt.plot(n, times)
     plt.show()
