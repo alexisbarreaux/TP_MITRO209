@@ -8,6 +8,7 @@ import sys
 import cProfile
 
 from time import time
+from sklearn.metrics import r2_score
 
 cimport cython
 
@@ -26,7 +27,7 @@ cimport cython
 # TODO pour celui là améliorer la construction pour les trucs chiants.
 # toy_graph : n = 5, edges = 6, "toy_graph.txt"
 # toy_graph : n = 10, "toy_graph_2.txt"
-# roadNet-PA : n = 1088092 (but in fact more 1090950), 4,913s
+# roadNet-PA : n = 1088092 (but in fact more 1090950), 4,913s, m = 1541898
 
 if "win" in sys.platform:
     DATA_PATH = ".\\data"
@@ -207,6 +208,7 @@ def test_temps_2():
 
 def test_temps_3():
     n = np.array([4039, 7057, 13866, 27917, 50515, 1090950])
+    m = np.array([88234, 89455, 86858, 206259, 819306, 1541898])
     labels = np.array(["ego-Facebook", "gemsec_government", "gemsec_athletes", "gemsec_new_sites", "gemsec_artists",
                        "roadNet-PA"])
 
@@ -220,12 +222,22 @@ def test_temps_3():
     for i in range(len(times) - 1, 0, -1):
         times[i] -= times[i - 1]
     times[0] -= start_time
-    return n, times
+    return n + m, times
 
 def plotting_times():
-    n, times = test_temps_3()
+    n_m, times = test_temps_3()
 
+    coef = np.polyfit(n_m, times,1)
+    print(coef)
+    # attemps to fit a degree one polynome y = a * x + b.
+    poly1d_fn = np.poly1d(coef)
+    # poly1d_fn is now a function which takes in x and returns an estimate for y
+    prediction = poly1d_fn(n_m)
+
+    r2 = r2_score(times, prediction)
+    print(r2)
     # Plotting the figure
     plt.clf()
-    plt.plot(n, times)
+    plt.plot(n_m, times, "+r")
+    plt.plot(n_m, prediction, "b")
     plt.show()
