@@ -6,3 +6,4 @@ data
 *.c
 build
 *.html
+*.cpp

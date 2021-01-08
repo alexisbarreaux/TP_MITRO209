@@ -1,5 +1,6 @@
 # cython: language_level=3
 # cython: linetrace=True
+# distutils: language=c++
 
 import os.path as path
 import numpy as np
@@ -11,23 +12,9 @@ from time import time
 from sklearn.metrics import r2_score
 
 cimport cython
+cimport numpy as np
+from libcpp.vector cimport vector
 
-# Dataset notes :
-# ego-Facebook : n = 4039, m = 88234, "ego-Facebook.txt"
-# H = densest_linear_test(4039, "ego-Facebook.txt")
-# gemsec_government : n = 7057, m = 89455, "gemsec_government.txt"
-# H = densest_linear_test(7057, "gemsec_government.txt")
-# gemsec_athletes : n = 13866, m = 86858
-# H = densest_linear_test(13866, "gemsec_athletes.txt")
-# gemsec_artists : n = 50515, m = 819306
-# H = densest_linear_test(50515, "gemsec_artists.txt")
-# gemsec_new_sites : n = 27917, m = 206259
-# H = densest_linear_test(27917, "gemsec_new_sites.txt")
-# com_amazon : n = 334863, m = 925,872
-# TODO pour celui là améliorer la construction pour les trucs chiants.
-# toy_graph : n = 5, edges = 6, "toy_graph.txt"
-# toy_graph : n = 10, "toy_graph_2.txt"
-# roadNet-PA : n = 1088092 (but in fact more 1090950), 4,913s, m = 1541898
 
 if "win" in sys.platform:
     DATA_PATH = ".\\data"
@@ -38,16 +25,18 @@ else:
 # O(m)
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def filling_adjacency(filename, list adj_lists, list deg, int number_of_edges):
+cdef filling_adjacency(str filename,
+                       int n):
     """
     Method to fill the adjacency with the file containing edges.
     :param filename: Given filename as a string.
-    :param adj_lists: Adjacency list.
-    :param deg
-    :param number_of_edges
-    :return: The number of edges if it went well, -1 otherwise.
+    :param n: Number of nodes.
+    :return: Initialised degree and adjaceny lists or raises an issue if the filename is incorrect.
     """
-    cdef str file_path, line
+    cdef int[:] deg = np.zeros(n, dtype=int)
+    cdef list adj_lists = [[] for _ in range(n)]
+    cdef str file_path = ""
+    cdef str line = ""
     cdef int u, v
     cdef list edges
 
@@ -60,13 +49,13 @@ def filling_adjacency(filename, list adj_lists, list deg, int number_of_edges):
             line = file.readline()
 
             # O(m)
-            while not len(line) == 0:
+            while not line =="":
                 # All this in O(1)
-                line = line.replace("  ", " ")
                 edges = line.strip().split(" ")
 
                 # TODO don't use a cast here or check
-                u, v = int(edges[0]), int(edges[1])
+                u = int(edges[0])
+                v = int(edges[1])
 
                 line = file.readline()
 
@@ -77,47 +66,49 @@ def filling_adjacency(filename, list adj_lists, list deg, int number_of_edges):
                 adj_lists[v].append(u)
                 deg[u] += 1
                 deg[v] += 1
-                number_of_edges += 1
 
-            return number_of_edges
+            return deg, adj_lists
 
     else:
-        print("Invalid specified path : " + file_path)
-        return -1
+        raise Exception("Invalid specified path : " + file_path)
 
 
 # O(n+m)
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def densest_linear_test(int n,str filename):
+@cython.cdivision(True)
+cpdef densest_linear_test(int n,
+                          int m,
+                          str filename):
     """
-    Computes the densest subgraph.
+    Computes the densest subgraph. 
     :param n: the number of nodes.
-    :param filename: A list of list of edges.
-    :return: the densest subgraph.
+    :param m: number of edges.
+    :param filename : the name of the file
+    :return: The densest subgraph as a list, its density and number of edges as int.
     """
+    # O(1)
     if n <= 0 :
-        return [], -1, -1
+        raise Exception("The number of nodes can't be less than 1")
 
     # O(n)
-    cdef list deg = [0 for _ in range(n)]
-    cdef list node_used = [False for _ in range(n)]
-    cdef list adj_lists = [[] for _ in range(n)]
     cdef list deg_list = [[] for _ in range(n)]
     cdef list removed_nodes = []
-    cdef list chosen_nodes = [True for _ in range(n)]
-    cdef int compteur = 0
-    cdef int number_of_edges = 0
-    cdef int optimal_state = 0
+    cdef list adj_lists
 
-    cdef int roh_h, min_deg, temp_deg, node, erased_edges, neighbour
+    cdef int[:] deg
+    cdef int[:] chosen_nodes = np.ones(n, dtype=int)
+    cdef int[:] node_used = np.zeros(n, dtype=int)
+
+    cdef int compteur = 0
+    cdef int optimal_state = 0
+    cdef int roh_h, min_deg, temp_deg, node, erased_edges, neighbour, found
+    cdef int number_of_edges = m
+
     cdef double temp_roh
 
     # O(m)
-    number_of_edges = filling_adjacency(filename, adj_lists, deg, number_of_edges)
-    if number_of_edges < 0:
-        # TODO raise smth here
-        return [], -1, -1
+    deg, adj_lists = filling_adjacency(filename, n)
 
     # O(1)
     # Setting initial rho_h
@@ -133,33 +124,26 @@ def densest_linear_test(int n,str filename):
 
     # O(m) pour moi
     # We erase at most n - 1 nodes.
-    # TODO même n - 2, après il ne reste qu'un seul arc au mieux.
     while compteur < n - 1:
-        found = False
         node = -1
-        # TODO I must check this, it is the sole true issue for me.
+        found = 0
         # O(??) the issue is here. I think it's ok since we add
         # each node at most deg of it in the list. I think summed on
         # the whole n - 1 loops it must be O(m).
-        while not found:
+        while found == 0:
             # O(1)
-            if len(deg_list[min_deg]) != 0:
+            if deg_list[min_deg]:
                 node = (deg_list[min_deg]).pop()
-                found = not node_used[node]
+                # Checking if the node has already been used.
+                found = 1 - node_used[node]
             # O(1)
             else:
-                # no more edges. Normally can't happen, since
-                # we will compute each node and read compteur == n- 1
-                # before having this issue
-                if min_deg == n - 1:
-                    found = True
                 # Otherwise just go further in the chain.
-                else:
-                    min_deg += 1
+                min_deg += 1
 
         # Shouldn't happen yet better safe than sorry.
         if node == - 1:
-            return []
+            raise Exception("Issue when trying to find next node to delete, none found.")
 
         # Found a node to compute :
         node_used[node] = True
@@ -167,9 +151,10 @@ def densest_linear_test(int n,str filename):
         removed_nodes.append(node)
 
         # O(deg(node))
-        # TODO j'ai l'impression qu'il y a un souci avec le nombre d'arcs et leur maj
         erased_edges = 0
-        for neighbour in adj_lists[node]:
+
+        for i in range(len(adj_lists[node])):
+            neighbour = adj_lists[node][i]
             if not node_used[neighbour]:
                 # O(1)
                 erased_edges += 1
@@ -177,7 +162,7 @@ def densest_linear_test(int n,str filename):
                 min_deg = min(min_deg, deg[neighbour])
                 deg_list[deg[neighbour]].append(neighbour)
 
-        # Maj possible de rho_h
+        # Check if we have better density
         # O(1)
         number_of_edges -= erased_edges
         temp_roh = number_of_edges / (n - compteur)
@@ -196,27 +181,22 @@ def densest_linear_test(int n,str filename):
     return [i for i in range(n) if chosen_nodes[i]], rho_h, optimal_edges
 
 
-def test_temps(n, filename):
-    a = time()
-    _, ro, _ = densest_linear_test(n, filename)
-    print(ro)
-    return time() - a
+def test_temps():
+    #n = np.array([4039, 7057, 13866, 27917, 50515, 1090950])
+    #m = np.array([88234, 89455, 86858, 206259, 819306, 1541898])
+    #labels = np.array(["ego-Facebook", "gemsec_government", "gemsec_athletes", "gemsec_new_sites", "gemsec_artists",
+                       #"roadNet-PA"])
 
-
-def test_temps_2():
-    cProfile.run("densest_linear_test(4039, 'ego-Facebook.txt')")
-
-def test_temps_3():
-    n = np.array([4039, 7057, 13866, 27917, 50515, 1090950])
-    m = np.array([88234, 89455, 86858, 206259, 819306, 1541898])
-    labels = np.array(["ego-Facebook", "gemsec_government", "gemsec_athletes", "gemsec_new_sites", "gemsec_artists",
-                       "roadNet-PA"])
+    n = np.array([4039, 5908, 7057, 13866, 14113, 27917, 50515, 3892, 41773, 54573, 47538])
+    m = np.array([88234, 41729, 89455, 86858, 52310, 206259, 819306, 17262, 125826, 498202, 222887])
+    labels = np.array(["ego-Facebook", "gemsec_politician", "gemsec_government", "gemsec_athletes", "gemsec_company",
+                       "gemsec_new_sites", "gemsec_artists", "gemsec_tvshows", "gemsec_RO", "gemsec_HR", "gemsec_HU"])
 
     times = np.zeros(len(n))
     start_time = time()
 
     for i in range(len(n)):
-        _, _, _ = densest_linear_test(n[i], labels[i] + ".txt")
+        _,_,_ = densest_linear_test(n[i], m[i], labels[i] + ".txt")
         times[i] = time()
 
     for i in range(len(times) - 1, 0, -1):
@@ -225,10 +205,9 @@ def test_temps_3():
     return n + m, times
 
 def plotting_times():
-    n_m, times = test_temps_3()
+    n_m, times = test_temps()
 
     coef = np.polyfit(n_m, times,1)
-    print(coef)
     # attemps to fit a degree one polynome y = a * x + b.
     poly1d_fn = np.poly1d(coef)
     # poly1d_fn is now a function which takes in x and returns an estimate for y
