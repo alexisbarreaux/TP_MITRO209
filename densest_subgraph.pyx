@@ -102,8 +102,8 @@ cpdef densest_linear_test(int n,
     cdef int compteur = 0
     cdef int optimal_state = 0
     cdef int min_deg, temp_deg, node, erased_edges, neighbour, found
-    cdef int number_of_edges = m
 
+    cdef double number_of_edges = m
     cdef double temp_roh, roh_h
 
     # O(m)
