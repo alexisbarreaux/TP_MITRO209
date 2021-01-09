@@ -6,14 +6,13 @@ import os.path as path
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-import cProfile
 
 from time import time
 from sklearn.metrics import r2_score
 
 cimport cython
 cimport numpy as np
-from libcpp.vector cimport vector
+#from libcpp.vector cimport vector
 
 
 if "win" in sys.platform:
@@ -102,10 +101,10 @@ cpdef densest_linear_test(int n,
 
     cdef int compteur = 0
     cdef int optimal_state = 0
-    cdef int roh_h, min_deg, temp_deg, node, erased_edges, neighbour, found
+    cdef int min_deg, temp_deg, node, erased_edges, neighbour, found
     cdef int number_of_edges = m
 
-    cdef double temp_roh
+    cdef double temp_roh, roh_h
 
     # O(m)
     deg, adj_lists = filling_adjacency(filename, n)
@@ -182,15 +181,16 @@ cpdef densest_linear_test(int n,
 
 
 def test_temps():
-    #n = np.array([4039, 7057, 13866, 27917, 50515, 1090950])
-    #m = np.array([88234, 89455, 86858, 206259, 819306, 1541898])
-    #labels = np.array(["ego-Facebook", "gemsec_government", "gemsec_athletes", "gemsec_new_sites", "gemsec_artists",
-                       #"roadNet-PA"])
-
-    n = np.array([4039, 5908, 7057, 13866, 14113, 27917, 50515, 3892, 41773, 54573, 47538])
-    m = np.array([88234, 41729, 89455, 86858, 52310, 206259, 819306, 17262, 125826, 498202, 222887])
+    """
+    Simple function returning the time used to compute on several graphs.
+    :return:
+    """
+    # n for roadNet-PA is not the one given on internet but an estimate of the maximum label of a node in the file.
+    n = np.array([4039, 5908, 7057, 13866, 14113, 27917, 50515, 3892, 41773, 54573, 47538, 1099999])
+    m = np.array([88234, 41729, 89455, 86858, 52310, 206259, 819306, 17262, 125826, 498202, 222887, 1541898])
     labels = np.array(["ego-Facebook", "gemsec_politician", "gemsec_government", "gemsec_athletes", "gemsec_company",
-                       "gemsec_new_sites", "gemsec_artists", "gemsec_tvshows", "gemsec_RO", "gemsec_HR", "gemsec_HU"])
+                       "gemsec_new_sites", "gemsec_artists", "gemsec_tvshows", "gemsec_RO", "gemsec_HR", "gemsec_HU",
+                       "roadNet-PA"])
 
     times = np.zeros(len(n))
     start_time = time()
@@ -205,6 +205,10 @@ def test_temps():
     return n + m, times
 
 def plotting_times():
+    """
+    Function plotting the times used to compute on several graphs.
+    :return:
+    """
     n_m, times = test_temps()
 
     coef = np.polyfit(n_m, times,1)
