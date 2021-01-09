@@ -38,6 +38,7 @@ cdef filling_adjacency(str filename,
     cdef str line = ""
     cdef int u, v
     cdef list edges
+    cdef double number_of_edges = 0
 
     # O(1), more accurate to say something that will be tiny in front of n or m.
     file_path = path.join(DATA_PATH, filename)
@@ -65,8 +66,9 @@ cdef filling_adjacency(str filename,
                 adj_lists[v].append(u)
                 deg[u] += 1
                 deg[v] += 1
+                number_of_edges += 1
 
-            return deg, adj_lists
+            return number_of_edges, deg, adj_lists
 
     else:
         raise Exception("Invalid specified path : " + file_path)
@@ -77,12 +79,10 @@ cdef filling_adjacency(str filename,
 @cython.wraparound(False)
 @cython.cdivision(True)
 cpdef densest_linear_test(int n,
-                          int m,
                           str filename):
     """
     Computes the densest subgraph. 
     :param n: the number of nodes.
-    :param m: number of edges.
     :param filename : the name of the file
     :return: The densest subgraph as a list, its density and number of edges as int.
     """
@@ -103,11 +103,10 @@ cpdef densest_linear_test(int n,
     cdef int optimal_state = 0
     cdef int min_deg, temp_deg, node, erased_edges, neighbour, found
 
-    cdef double number_of_edges = m
-    cdef double temp_roh, roh_h
+    cdef double temp_roh, roh_h, number_of_edges
 
     # O(m)
-    deg, adj_lists = filling_adjacency(filename, n)
+    number_of_edges, deg, adj_lists = filling_adjacency(filename, n)
 
     # O(1)
     # Setting initial rho_h
@@ -196,7 +195,7 @@ def test_temps():
     start_time = time()
 
     for i in range(len(n)):
-        _,_,_ = densest_linear_test(n[i], m[i], labels[i] + ".txt")
+        _,_,_ = densest_linear_test(n[i], labels[i] + ".txt")
         times[i] = time()
 
     for i in range(len(times) - 1, 0, -1):
