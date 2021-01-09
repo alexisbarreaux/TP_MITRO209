@@ -53,7 +53,6 @@ cdef filling_adjacency(str filename,
                 # All this in O(1)
                 edges = line.strip().split(" ")
 
-                # TODO don't use a cast here or check
                 u = int(edges[0])
                 v = int(edges[1])
 
@@ -79,11 +78,15 @@ cdef filling_adjacency(str filename,
 @cython.wraparound(False)
 @cython.cdivision(True)
 cpdef densest_linear_test(int n,
-                          str filename):
+                          double number_of_edges,
+                          int[:] deg,
+                          list adj_lists):
     """
     Computes the densest subgraph. 
     :param n: the number of nodes.
-    :param filename : the name of the file
+    :param number_of_edges: the computed number of edges in the graph.
+    :param deg: a list with the degree of each node.
+    :param adj_lists: filled adjacency lists.
     :return: The densest subgraph as a list, its density and number of edges as int.
     """
     # O(1)
@@ -93,9 +96,7 @@ cpdef densest_linear_test(int n,
     # O(n)
     cdef list deg_list = [[] for _ in range(n)]
     cdef list removed_nodes = []
-    cdef list adj_lists
 
-    cdef int[:] deg
     cdef int[:] chosen_nodes = np.ones(n, dtype=int)
     cdef int[:] node_used = np.zeros(n, dtype=int)
 
@@ -103,10 +104,7 @@ cpdef densest_linear_test(int n,
     cdef int optimal_state = 0
     cdef int min_deg, temp_deg, node, erased_edges, neighbour, found
 
-    cdef double temp_roh, roh_h, number_of_edges
-
-    # O(m)
-    number_of_edges, deg, adj_lists = filling_adjacency(filename, n)
+    cdef double temp_roh, roh_h
 
     # O(1)
     # Setting initial rho_h
@@ -192,15 +190,14 @@ def test_temps():
                        "roadNet-PA"])
 
     times = np.zeros(len(n))
-    start_time = time()
 
-    for i in range(len(n)):
-        _,_,_ = densest_linear_test(n[i], labels[i] + ".txt")
-        times[i] = time()
 
-    for i in range(len(times) - 1, 0, -1):
-        times[i] -= times[i - 1]
-    times[0] -= start_time
+    for i in range(1, len(n)):
+        number_of_edges, deg, adj_lists = filling_adjacency(labels[i] + ".txt", n[i])
+        start_time = time()
+        _,_,_ = densest_linear_test(n[i], number_of_edges, deg, adj_lists)
+        times[i] = time() - start_time
+
     return n + m, times
 
 def plotting_times():
