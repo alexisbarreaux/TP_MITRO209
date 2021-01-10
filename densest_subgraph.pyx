@@ -177,46 +177,86 @@ cpdef densest_linear_test(int n,
     return [i for i in range(n) if chosen_nodes[i]], rho_h, optimal_edges
 
 
-def test_temps():
+def test_temps(wanted = "temps"):
     """
     Simple function returning the time used to compute on several graphs.
+    :param: wanted : string to know if I want to plot times or density.
     :return:
     """
     # n for roadNet-PA is not the one given on internet but an estimate of the maximum label of a node in the file.
-    n = np.array([4039, 5908, 7057, 13866, 14113, 27917, 50515, 3892, 41773, 54573, 47538, 1099999])
+    n = np.array([4039, 5908, 7057, 13866, 14113, 27917, 50515, 3892, 41773, 54573, 47538, 1091000])
     m = np.array([88234, 41729, 89455, 86858, 52310, 206259, 819306, 17262, 125826, 498202, 222887, 1541898])
     labels = np.array(["ego-Facebook", "gemsec_politician", "gemsec_government", "gemsec_athletes", "gemsec_company",
                        "gemsec_new_sites", "gemsec_artists", "gemsec_tvshows", "gemsec_RO", "gemsec_HR", "gemsec_HU",
                        "roadNet-PA"])
+    rho = np.zeros(len(n))
 
-    times = np.zeros(len(n))
+    #n = np.array([4039, 7057, 27917, 50515, 1091000])
+    #m = np.array([88234, 89455, 206259, 819306, 1541898])
+    #labels = np.array(["ego-Facebook", "gemsec_government", "gemsec_new_sites", "gemsec_artists", "roadNet-PA"])
 
+    densest_times = np.zeros(len(n))
+    whole_times = np.zeros(len(n))
 
-    for i in range(1, len(n)):
+    for i in range(len(n)):
+        whole_start = time()
         number_of_edges, deg, adj_lists = filling_adjacency(labels[i] + ".txt", n[i])
         start_time = time()
-        _,_,_ = densest_linear_test(n[i], number_of_edges, deg, adj_lists)
-        times[i] = time() - start_time
+        _,rho[i],_ = densest_linear_test(n[i], number_of_edges, deg, adj_lists)
+        densest_times[i] = time() - start_time
+        whole_times[i] = time() - whole_start
 
-    return n + m, times
+    if wanted == "density":
+        return n, m, rho
+
+    return n + m, densest_times, whole_times
 
 def plotting_times():
     """
     Function plotting the times used to compute on several graphs.
     :return:
     """
-    n_m, times = test_temps()
+    n_m, densest_times, whole_times = test_temps()
 
-    coef = np.polyfit(n_m, times,1)
+    coef_dens = np.polyfit(n_m, densest_times,1)
+    coef_whole = np.polyfit(n_m, whole_times,1)
+
     # attemps to fit a degree one polynome y = a * x + b.
-    poly1d_fn = np.poly1d(coef)
+    poly1d_dens = np.poly1d(coef_dens)
+    poly1d_whole = np.poly1d(coef_whole)
     # poly1d_fn is now a function which takes in x and returns an estimate for y
-    prediction = poly1d_fn(n_m)
+    prediction_dens = poly1d_dens(n_m)
+    prediction_whole = poly1d_whole(n_m)
 
-    r2 = r2_score(times, prediction)
-    print(r2)
+    r2_dens = r2_score(densest_times, prediction_dens)
+    r2_whole = r2_score(whole_times, prediction_whole)
+
     # Plotting the figure
     plt.clf()
-    plt.plot(n_m, times, "+r")
-    plt.plot(n_m, prediction, "b")
+    plt.plot(n_m, densest_times, "bs", label="Computing densest subgraph")
+    plt.plot(n_m, prediction_dens, "b", label="R²= "+ str(r2_dens))
+    plt.plot(n_m, whole_times, "r^", label="Computing + filling adjacency lists")
+    plt.plot(n_m, prediction_whole, "r", label= "R²= " + str(r2_whole))
+    plt.xlabel("Sum of n and m")
+    plt.ylabel("Time in seconds")
+    plt.title("Time to compute the densest subgraph approximation on several graphs.")
+    plt.legend()
+    plt.show()
+
+def plotting_density():
+    """
+    Function plotting the densities.
+    :return:
+    """
+    n, m, rho = test_temps("density")
+    x = np.arange(len(n))
+
+    # Plotting the figure
+    plt.clf()
+    plt.plot(x, m/n, "bs", label="Starting density")
+    plt.plot(x, rho, "r^", label="Found density")
+    plt.xlabel("Different graphs")
+    plt.ylabel("Density")
+    plt.title("Initial density and best found density on several graphs.")
+    plt.legend()
     plt.show()
